@@ -1,4 +1,9 @@
-const data = JSON.parse(localStorage.getItem('aura'));
+let data;
+try {
+    data = JSON.parse(localStorage.getItem('aura'));
+} catch {
+    data = null;
+}
 
 if (!data) {
     window.location.href = '/';
@@ -6,31 +11,33 @@ if (!data) {
 
 function populate() {
     document.getElementById('score').textContent = data.score?.toLocaleString() ?? '—';
+    document.getElementById('max-score').textContent = '/ ' + (data.max_score?.toLocaleString() ?? '100');
     document.getElementById('tier-title').textContent = data.tier_title ?? 'UNKNOWN';
     document.getElementById('tagline').textContent = data.tagline ?? '';
 
     const breakdown = document.getElementById('breakdown');
+    const items = [];
+
     if (data.breakdown) {
-        breakdown.innerHTML = data.breakdown.map(cat => `
-            <div class="flex justify-between items-center py-2 border-b border-outline-variant/20">
-                <div class="flex flex-col">
-                    <span class="font-data-mono text-secondary text-sm">${cat.category}</span>
-                    <span class="font-data-mono text-text-muted text-xs">${cat.comment}</span>
-                </div>
-                <span class="font-data-mono ${cat.score >= 0 ? 'text-primary' : 'text-error'} font-bold">${cat.score >= 0 ? '+' : ''}${cat.score}</span>
-            </div>
-        `).join('');
+        data.breakdown.forEach(cat => {
+            items.push({ label: cat.category, comment: cat.comment, score: cat.score });
+        });
     }
 
-    const penalties = document.getElementById('penalties');
     if (data.penalties) {
-        penalties.innerHTML = data.penalties.map(p => `
-            <div class="flex justify-between items-center py-2 border-b border-outline-variant/20">
+        data.penalties.forEach(p => {
+            items.push({ label: p.reason, comment: p.comment, score: -p.deduction });
+        });
+    }
+
+    if (items.length > 0) {
+        breakdown.innerHTML = items.map((item, i) => `
+            <div class="flex justify-between items-center py-2${i < items.length - 1 ? ' border-b border-outline-variant/20' : ''}">
                 <div class="flex flex-col">
-                    <span class="font-data-mono text-text-muted text-xs">${p.reason}</span>
-                    <span class="font-data-mono text-text-muted text-[10px]">${p.comment}</span>
+                    <span class="font-data-mono text-secondary text-sm">${item.label}</span>
+                    <span class="font-data-mono text-text-muted text-xs">${item.comment}</span>
                 </div>
-                <span class="font-data-mono text-error font-bold">-${p.deduction}</span>
+                <span class="font-data-mono ${item.score >= 0 ? 'text-primary' : 'text-error'} font-bold">${item.score >= 0 ? '+' : ''}${item.score}</span>
             </div>
         `).join('');
     }
@@ -42,14 +49,16 @@ function populate() {
                 <span class="font-headline-hero text-primary/40 text-2xl leading-none">${String(i + 1).padStart(2, '0')}</span>
                 <div class="space-y-1">
                     <p class="text-sm text-on-surface">${tip.tip}</p>
-                    <p class="font-data-mono text-[10px] text-primary">+${tip.gain} AURA</p>
+                    <p class="font-data-mono text-[10px] text-primary">${tip.gain}</p>
                 </div>
             </div>
         `).join('');
     }
 
-    document.getElementById('roast').textContent = data.specific_roast ?? '';
-    document.getElementById('verdict').textContent = data.verdict ?? '';
+    const roastEl = document.getElementById('roast');
+    if (roastEl) roastEl.textContent = data.specific_roast ?? '';
+    const verdictEl = document.getElementById('verdict');
+    if (verdictEl) verdictEl.textContent = data.verdict ?? '';
 }
 
 document.getElementById('try-another').addEventListener('click', () => {
