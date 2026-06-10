@@ -211,7 +211,7 @@
                 >
                     <span
                         class="font-data-mono text-text-secondary text-label-tiny tracking-widest mb-2 uppercase"
-                        >Slaylist</span
+                        >Sonic Aura</span
                     >
                     <div
                         class="font-score-display-mobile text-score-display-mobile text-primary leading-none mb-1"
@@ -236,7 +236,32 @@
                     id="tagline"
                 ></p>
             </section>
-            <!-- Roast -->
+            <!-- Report Card: Playlist Breakdown -->
+            <section class="bg-card-bg rounded-xl p-lg shadow-xl space-y-md">
+                <div
+                    class="flex justify-between items-end border-b border-primary-container/30 pb-xs"
+                >
+                    <h2
+                        class="font-headline-hero-mobile text-[1.25rem] text-primary tracking-tight"
+                    >
+                        VIBE BREAKDOWN
+                    </h2>
+                    <span class="font-data-mono text-text-muted text-[10px]"
+                        >ALG. 4.0.2</span
+                    >
+                </div>
+                <div class="space-y-sm" id="breakdown"></div>
+            </section>
+            <!-- Aura Prescription -->
+            <section class="space-y-md">
+                <h2
+                    class="font-headline-hero-mobile text-[1.25rem] text-primary"
+                >
+                    AURA RECOVERY PLAN
+                </h2>
+                <div class="grid gap-sm" id="prescription"></div>
+            </section>
+            <!-- Verdict -->
             <section class="relative py-xl text-center">
                 <span
                     class="absolute top-0 left-1/2 -translate-x-1/2 font-headline-hero text-primary/10 text-8xl pointer-events-none select-none"
@@ -247,14 +272,24 @@
                     id="roast"
                 ></p>
             </section>
+            <!-- Verdict -->
+            <section class="relative py-xl text-center">
+                <p
+                    class="font-body-base text-lg text-text-secondary relative z-10 px-md leading-relaxed font-bold"
+                    id="verdict"
+                ></p>
+            </section>
             <!-- Share Section -->
             <section class="flex flex-col items-center gap-lg">
                 <div class="text-center">
                     <h2
                         class="font-headline-hero-mobile text-[1.5rem] text-primary uppercase"
                     >
-                        DOWNLOAD YOUR PLAYLIST AURA SCORE
+                        SCREENSHOT THIS. FLEX IT.
                     </h2>
+                    <p class="text-text-muted text-sm">
+                        Don't be shy. The taste is actually good.
+                    </p>
                 </div>
                 <div class="flex flex-col w-full gap-sm">
                     <button
@@ -263,10 +298,10 @@
                     >
                         <span
                             class="material-symbols-outlined"
-                            data-icon="download"
-                            >download</span
+                            data-icon="share"
+                            >share</span
                         >
-                        DOWNLOAD YOUR AURA SCORE
+                        SHARE YOUR AURA SCORE
                     </button>
                     <button
                         class="w-full border border-primary/40 py-md rounded-xl text-primary font-bold hover:bg-primary/10 active:scale-95 transition-transform"
@@ -277,6 +312,78 @@
                 </div>
             </section>
         </main>
+        <!-- Minimal Footer -->
+        <footer
+            class="max-w-container-max mx-auto py-xl px-md border-t border-primary-container/20 text-center"
+        >
+            <div class="space-y-md">
+                <h2
+                    class="font-headline-hero-mobile text-[1.25rem] text-primary tracking-tighter"
+                >
+                    SLAYLIST
+                </h2>
+                <div
+                    class="flex justify-center gap-lg text-text-muted text-xs font-data-mono"
+                >
+                    <a class="hover:text-primary" href="#">PRIVACY</a>
+                    <a class="hover:text-primary" href="#">TERMS</a>
+                    <a class="hover:text-primary" href="#">CONTACT</a>
+                </div>
+                <p
+                    class="text-[10px] text-text-muted uppercase tracking-widest pt-4"
+                >
+                    © 2024 SLAYLIST LABS
+                </p>
+            </div>
+        </footer>
+        <!-- BottomNavBar (Mobile Only) -->
+        <nav
+            class="fixed bottom-0 left-0 w-full z-50 bg-card-bg shadow-[0_-4px_20px_rgba(114,78,145,0.15)] rounded-t-xl max-w-container-max mx-auto md:hidden"
+        >
+            <div class="flex justify-around items-center px-sm py-xs">
+                <a
+                    class="flex flex-col items-center justify-center text-text-muted p-xs hover:text-primary transition-colors active:scale-90 transition-all duration-200"
+                    href="#"
+                >
+                    <span class="material-symbols-outlined" data-icon="home"
+                        >home</span
+                    >
+                    <span class="font-label-tiny text-label-tiny">Home</span>
+                </a>
+                <a
+                    class="flex flex-col items-center justify-center text-text-muted p-xs hover:text-primary transition-colors active:scale-90 transition-all duration-200"
+                    href="#"
+                >
+                    <span class="material-symbols-outlined" data-icon="bolt"
+                        >bolt</span
+                    >
+                    <span class="font-label-tiny text-label-tiny"
+                        >Trending</span
+                    >
+                </a>
+                <a
+                    class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-xs active:scale-90 transition-all duration-200"
+                    href="#"
+                >
+                    <span
+                        class="material-symbols-outlined"
+                        data-icon="history"
+                        style="font-variation-settings: &quot;FILL&quot; 1"
+                        >history</span
+                    >
+                    <span class="font-label-tiny text-label-tiny">History</span>
+                </a>
+                <a
+                    class="flex flex-col items-center justify-center text-text-muted p-xs hover:text-primary transition-colors active:scale-90 transition-all duration-200"
+                    href="#"
+                >
+                    <span class="material-symbols-outlined" data-icon="person"
+                        >person</span
+                    >
+                    <span class="font-label-tiny text-label-tiny">Profile</span>
+                </a>
+            </div>
+        </nav>
         <script>
             function copyLink() {
                 const originalBtn = event.currentTarget;
@@ -306,22 +413,6 @@
                 animate();
             }
         </script>
-        <footer
-            class="w-full py-lg px-md border-t border-primary-container/20 bg-surface-container-lowest flex flex-col items-center gap-sm text-center"
-        >
-            <h4
-                class="font-headline-hero-mobile text-xl text-primary tracking-tighter"
-            >
-                SLAYLIST
-            </h4>
-            <a
-                class="font-data-mono text-xs text-text-muted hover:text-primary transition-colors"
-                href="#"
-            >
-                GITHUB
-            </a>
-        </footer>
-
         <script src="/js/result.js" defer></script>
     </body>
 </html>

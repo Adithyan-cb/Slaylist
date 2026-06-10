@@ -153,6 +153,20 @@
             .glow-hover:hover {
                 box-shadow: 0 0 25px rgba(114, 78, 145, 0.6);
             }
+            .custom-dashed {
+                background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='12' ry='12' stroke='%23724E91' stroke-width='3' stroke-dasharray='12%2c 12' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+                border-radius: 12px;
+            }
+            ::-webkit-scrollbar {
+                width: 6px;
+            }
+            ::-webkit-scrollbar-track {
+                background: #0f0a14;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #724e91;
+                border-radius: 10px;
+            }
             .aura-tier-farmer {
                 background-color: #2a1a35;
                 border: 3px solid #ffffff;
@@ -183,20 +197,6 @@
                 background-color: #0f0a14;
                 border: 2px solid #4a2a3e;
                 box-shadow: 0 0 16px rgba(74, 42, 62, 0.4);
-            }
-            .custom-dashed {
-                background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='12' ry='12' stroke='%23724E91' stroke-width='3' stroke-dasharray='12%2c 12' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
-                border-radius: 12px;
-            }
-            ::-webkit-scrollbar {
-                width: 6px;
-            }
-            ::-webkit-scrollbar-track {
-                background: #0f0a14;
-            }
-            ::-webkit-scrollbar-thumb {
-                background: #724e91;
-                border-radius: 10px;
             }
         </style>
     </head>
@@ -287,11 +287,16 @@
                         class="w-full bg-primary-container text-text-primary font-headline-hero text-lg md:text-xl py-lg rounded-full shadow-[0_4px_20px_rgba(114,78,145,0.4)] active:scale-95 transition-all duration-200 glow-hover flex items-center justify-center gap-sm"
                         id="calculate-btn"
                     >
-                        CHECK AURA
+                        CALCULATE AURA
                         <span class="material-symbols-outlined"
                             >arrow_forward</span
                         >
                     </button>
+                    <p
+                        class="font-label-tiny text-label-tiny text-text-muted text-center opacity-60"
+                    >
+                        🔒 We don't store your playlist data
+                    </p>
                 </section>
 
                 <section
@@ -316,39 +321,28 @@
                     </div>
                 </section>
 
-                <!-- Error Modal -->
-                <div
-                    class="fixed inset-0 z-[100] items-center justify-center hidden"
-                    id="error-modal"
-                >
+                <section class="flex flex-col gap-lg hidden" id="error-section">
                     <div
-                        class="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                    ></div>
-                    <div
-                        class="relative bg-card-bg rounded-xl p-xl max-w-sm w-full mx-md shadow-2xl border border-error/30 flex flex-col items-center gap-md"
+                        class="bg-input-bg p-xl rounded-xl flex flex-col items-center justify-center gap-md h-[320px] border border-error/30"
                     >
                         <span
                             class="material-symbols-outlined text-[48px] text-error"
                             >warning</span
                         >
-                        <p
-                            class="font-body-base font-bold text-text-primary text-center"
-                            id="error-title"
-                        >
+                        <p class="font-body-base font-bold text-text-primary">
                             Upload failed
                         </p>
                         <p
-                            class="font-label-tiny text-label-tiny text-text-muted uppercase tracking-widest text-center"
-                            id="error-message"
+                            class="font-label-tiny text-label-tiny text-text-muted uppercase tracking-widest"
                         ></p>
                         <button
                             class="mt-md border border-primary/40 px-lg py-sm rounded-xl text-primary font-bold hover:bg-primary/10 active:scale-95 transition-transform"
-                            id="error-close-btn"
+                            onclick="location.reload()"
                         >
                             TRY AGAIN
                         </button>
                     </div>
-                </div>
+                </section>
             </div>
 
             <section class="flex flex-col gap-xl">
@@ -387,8 +381,8 @@
                             ANALYZE
                         </h4>
                         <p class="text-text-secondary text-sm font-body-base">
-                            the uploaded screenshots goes to an AI model and and
-                            it analyses your screenshots.
+                            the AI processes track lists, genre blends, and deep
+                            cuts.
                         </p>
                     </div>
                     <div
@@ -403,7 +397,8 @@
                             GET ROASTED
                         </h4>
                         <p class="text-text-secondary text-sm font-body-base">
-                            Catch your aura score and get absolutely roasted
+                            Receive your aura score and a breakdown of your
+                            musical taste.
                         </p>
                     </div>
                 </div>
@@ -517,22 +512,55 @@
                     </div>
                 </div>
             </section>
+
+            <section
+                class="flex flex-col items-center gap-lg py-xxl bg-card-bg/30 rounded-3xl border border-outline-variant/20 px-md"
+            >
+                <div
+                    class="flex flex-col items-center text-center gap-md max-w-2xl"
+                >
+                    <h2
+                        class="font-headline-hero text-[2.5rem] md:text-[4rem] text-primary uppercase leading-none"
+                    >
+                        READY TO CHECK YOUR PLAYLIST AURA ?
+                    </h2>
+                    <p class="font-body-base text-lg text-text-secondary">
+                        Upload your Spotify playlist and let SLAYLIST do the
+                        rest.
+                    </p>
+                    <button
+                        onclick="document.getElementById('upload-section').scrollIntoView({behavior:'smooth'}); document.getElementById('file-input').click()"
+                        class="bg-primary-container text-text-primary font-headline-hero text-xl px-xxl py-lg rounded-full shadow-[0_4px_25px_rgba(114,78,145,0.5)] hover:scale-105 active:scale-95 transition-all duration-300 glow-hover uppercase flex items-center gap-sm"
+                    >
+                        CALCULATE AURA
+                        <span class="material-symbols-outlined"
+                            >auto_awesome</span
+                        >
+                    </button>
+                </div>
+            </section>
         </main>
 
         <footer
-            class="w-full py-lg px-md border-t border-primary-container/20 bg-surface-container-lowest flex flex-col items-center gap-sm text-center"
+            class="w-full py-md border-t border-outline-variant bg-surface-container-lowest flex flex-col items-center gap-xs px-container_padding text-center"
         >
-            <h4
-                class="font-headline-hero-mobile text-xl text-primary tracking-tighter"
-            >
-                SLAYLIST
-            </h4>
-            <a
-                class="font-data-mono text-xs text-text-muted hover:text-primary transition-colors"
-                href="#"
-            >
-                GITHUB
-            </a>
+            <div class="flex items-center gap-lg">
+                <a
+                    class="font-label-tiny text-label-tiny text-text-muted hover:text-secondary transition-colors"
+                    href="#"
+                    >Github</a
+                >
+                <h4
+                    class="font-headline-hero-mobile text-xl text-on-surface-variant px-md"
+                >
+                    SLAYLIST
+                </h4>
+                <a
+                    class="font-label-tiny text-label-tiny text-text-muted hover:text-secondary transition-colors"
+                    href="#"
+                    >About</a
+                >
+            </div>
         </footer>
 
         <script src="/js/app.js" defer></script>
