@@ -3,7 +3,10 @@ const fileInput = document.getElementById('file-input');
 const calculateBtn = document.getElementById('calculate-btn');
 const uploadSection = document.getElementById('upload-section');
 const loadingSection = document.getElementById('loading-section');
-const errorSection = document.getElementById('error-section');
+const errorModal = document.getElementById('error-modal');
+const errorTitle = document.getElementById('error-title');
+const errorMessage = document.getElementById('error-message');
+const errorCloseBtn = document.getElementById('error-close-btn');
 
 let selectedFile = null;
 
@@ -29,6 +32,10 @@ fileInput.addEventListener('change', (e) => {
     if (e.target.files.length > 0) handleFile(e.target.files[0]);
 });
 
+errorCloseBtn.addEventListener('click', () => {
+    hideError();
+});
+
 function handleFile(file) {
     selectedFile = file;
     dropZone.innerHTML = `
@@ -48,30 +55,38 @@ calculateBtn.addEventListener('click', async () => {
 
     uploadSection.classList.add('hidden');
     loadingSection.classList.remove('hidden');
-    errorSection.classList.add('hidden');
 
     const formData = new FormData();
     formData.append('file', selectedFile);
 
     try {
         const res = await fetch('/api/analyze', { method: 'POST', body: formData });
-        const data = await res.json();
 
-        if (data.error) {
-            showError(data.error);
+        if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            showError(body.detail || `Server error (${res.status})`);
             return;
         }
+
+        const data = await res.json();
 
         localStorage.setItem('aura', JSON.stringify(data));
         window.location.href = '/result.html';
     } catch (err) {
-        showError('The Vibe Bureau is experiencing technical difficulties. Try again.');
+        showError('Slaylist is experiencing technical difficulties. Try again.');
     }
 });
 
 function showError(msg) {
-    uploadSection.classList.remove('hidden');
     loadingSection.classList.add('hidden');
-    errorSection.classList.remove('hidden');
-    errorSection.querySelector('p').textContent = msg;
+    uploadSection.classList.remove('hidden');
+    errorTitle.textContent = 'Upload failed';
+    errorMessage.textContent = msg;
+    errorModal.classList.remove('hidden');
+    errorModal.classList.add('flex');
+}
+
+function hideError() {
+    errorModal.classList.add('hidden');
+    errorModal.classList.remove('flex');
 }
