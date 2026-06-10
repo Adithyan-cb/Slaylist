@@ -69,23 +69,20 @@ def _extract_json(raw: str) -> str:
     return raw.strip()
 
 
-async def _call_ai(image_bytes: bytes) -> AuraResponse:
+async def _call_ai(images: list[bytes]) -> AuraResponse:
     llm = _build_llm()
-    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
 
-    message = await llm.ainvoke(
-        [
-            HumanMessage(
-                content=[
-                    {"type": "text", "text": PROMPT},
-                    {
-                        "type": "image_url",
-                        "image_url": f"data:image/png;base64,{image_b64}",
-                    },
-                ]
-            ),
-        ]
-    )
+    content: list = [{"type": "text", "text": PROMPT}]
+    for image_bytes in images:
+        image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+        content.append(
+            {
+                "type": "image_url",
+                "image_url": f"data:image/png;base64,{image_b64}",
+            }
+        )
+
+    message = await llm.ainvoke([HumanMessage(content=content)])
 
     content = message.content
     if isinstance(content, list):
@@ -122,23 +119,37 @@ async def health():
 
 
 @app.post("/api/analyze")
-async def analyze(file: UploadFile = File(...)):
-    if not file or not file.filename:
-        raise HTTPException(status_code=400, detail="No file uploaded.")
+async def analyze(files: list[UploadFile] = File(...)):
+    if not files:
+        raise HTTPException(status_code=400, detail="No files uploaded.")
 
-    if file.content_type and not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=422, detail="File must be an image.")
+    images: list[bytes] = []
+    total_size = 0
+    for file in files:
+        if not file.filename:
+            continue
+        if file.content_type and not file.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=422,
+                detail=f"'{file.filename}' must be an image.",
+            )
+        image_bytes = await file.read()
+        if len(image_bytes) == 0:
+            raise HTTPException(
+                status_code=400, detail=f"'{file.filename}' is empty."
+            )
+        total_size += len(image_bytes)
+        if total_size > 50 * 1024 * 1024:
+            raise HTTPException(
+                status_code=413, detail="Total file size too large. Max 50MB combined."
+            )
+        images.append(image_bytes)
 
-    image_bytes = await file.read()
-
-    if len(image_bytes) == 0:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
-
-    if len(image_bytes) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="File too large. Max 5MB.")
+    if not images:
+        raise HTTPException(status_code=400, detail="No valid images uploaded.")
 
     try:
-        result = await _call_ai(image_bytes)
+        result = await _call_ai(images)
         return result.model_dump()
     except HTTPException:
         raise
