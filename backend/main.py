@@ -4,6 +4,7 @@ import logging
 import os
 import re
 from pathlib import Path
+from typing import List
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -15,6 +16,14 @@ from starlette.staticfiles import StaticFiles
 from backend.models import AuraResponse
 
 load_dotenv()
+
+CACHE_DIR = Path(__file__).resolve().parent / ".cache"
+CACHE_DIR.mkdir(exist_ok=True)
+
+from langchain.globals import set_llm_cache
+from langchain_community.cache import SQLiteCache
+
+set_llm_cache(SQLiteCache(database_path=str(CACHE_DIR / "llm_cache.db")))
 
 app = FastAPI(title="Slaylist API")
 
@@ -40,6 +49,9 @@ class NoCacheStaticFiles(StaticFiles):
 with open("backend/sysPrompt.md") as f:
     PROMPT = f.read()
 
+with open("backend/verifyPrompt.md") as f:
+    VERIFY_PROMPT = f.read()
+
 
 def _build_llm() -> ChatOpenAI:
     key = os.getenv("OPENROUTER_API_KEY")
@@ -56,6 +68,62 @@ def _build_llm() -> ChatOpenAI:
     )
 
 
+async def _verify_is_playlist(images_bytes: list[bytes]) -> bool:
+    llm = _build_llm()
+    content: list = [{"type": "text", "text": VERIFY_PROMPT}]
+    for img_bytes in images_bytes:
+        image_b64 = base64.b64encode(img_bytes).decode("utf-8")
+        content.append(
+            {
+                "type": "image_url",
+                "image_url": f"data:image/png;base64,{image_b64}",
+            }
+        )
+    message = await llm.ainvoke([HumanMessage(content=content)])
+    text = message.content
+    if isinstance(text, list):
+        text = "".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in text
+        )
+    return text.strip().upper() == "YES"
+
+
+VALID_TIERS = {
+    "AURA GOD PLAYLIST",
+    "SIGMA SOUNDWAVE",
+    "MID RIZZ RADIO",
+    "ALMOST COOKED PLAYLIST",
+    "COOKED PLAYLIST",
+    "NEGATIVE AURA",
+}
+
+TIER_RANGES: dict[str, tuple[int, int]] = {
+    "AURA GOD PLAYLIST": (90, 100),
+    "SIGMA SOUNDWAVE": (70, 89),
+    "MID RIZZ RADIO": (50, 69),
+    "ALMOST COOKED PLAYLIST": (30, 49),
+    "COOKED PLAYLIST": (10, 29),
+    "NEGATIVE AURA": (0, 9),
+}
+
+
+def _validate_response(parsed: dict) -> None:
+    tier = parsed.get("tier")
+    if tier not in VALID_TIERS:
+        raise ValueError(f"Invalid tier: {tier}")
+
+    score = parsed.get("score")
+    if not isinstance(score, int) or score < 0 or score > 100:
+        raise ValueError(f"Score out of range: {score}")
+
+    lo, hi = TIER_RANGES[tier]
+    if not (lo <= score <= hi):
+        raise ValueError(
+            f"Score {score} does not match tier '{tier}' (expected {lo}-{hi})"
+        )
+
+
 def _extract_json(raw: str) -> str:
     match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", raw, re.DOTALL)
     if match:
@@ -69,23 +137,20 @@ def _extract_json(raw: str) -> str:
     return raw.strip()
 
 
-async def _call_ai(image_bytes: bytes) -> AuraResponse:
+async def _call_ai(images_bytes: list[bytes]) -> AuraResponse:
     llm = _build_llm()
-    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
 
-    message = await llm.ainvoke(
-        [
-            HumanMessage(
-                content=[
-                    {"type": "text", "text": PROMPT},
-                    {
-                        "type": "image_url",
-                        "image_url": f"data:image/png;base64,{image_b64}",
-                    },
-                ]
-            ),
-        ]
-    )
+    content: list = [{"type": "text", "text": PROMPT}]
+    for img_bytes in images_bytes:
+        image_b64 = base64.b64encode(img_bytes).decode("utf-8")
+        content.append(
+            {
+                "type": "image_url",
+                "image_url": f"data:image/png;base64,{image_b64}",
+            }
+        )
+
+    message = await llm.ainvoke([HumanMessage(content=content)])
 
     content = message.content
     if isinstance(content, list):
@@ -105,6 +170,7 @@ async def _call_ai(image_bytes: bytes) -> AuraResponse:
         )
 
     try:
+        _validate_response(parsed)
         return AuraResponse(**parsed)
     except Exception:
         logger.exception(
@@ -122,23 +188,46 @@ async def health():
 
 
 @app.post("/api/analyze")
-async def analyze(file: UploadFile = File(...)):
-    if not file or not file.filename:
-        raise HTTPException(status_code=400, detail="No file uploaded.")
+async def analyze(files: List[UploadFile] = File(...)):
+    if not files:
+        raise HTTPException(status_code=400, detail="No files uploaded.")
 
-    if file.content_type and not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=422, detail="File must be an image.")
+    images_bytes: list[bytes] = []
+    total_size = 0
+    MAX_TOTAL = 50 * 1024 * 1024
 
-    image_bytes = await file.read()
+    for file in files:
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="Uploaded file has no filename.")
 
-    if len(image_bytes) == 0:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+        if file.content_type and not file.content_type.startswith("image/"):
+            raise HTTPException(status_code=422, detail="All files must be images.")
 
-    if len(image_bytes) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="File too large. Max 5MB.")
+        data = await file.read()
+
+        if len(data) == 0:
+            raise HTTPException(
+                status_code=400, detail=f"File '{file.filename}' is empty."
+            )
+
+        total_size += len(data)
+        if total_size > MAX_TOTAL:
+            raise HTTPException(
+                status_code=413,
+                detail="Total upload size exceeds 50MB limit.",
+            )
+
+        images_bytes.append(data)
 
     try:
-        result = await _call_ai(image_bytes)
+        is_playlist = await _verify_is_playlist(images_bytes)
+        if not is_playlist:
+            raise HTTPException(
+                status_code=422,
+                detail="The uploaded image is not a songs playlist screenshot.",
+            )
+
+        result = await _call_ai(images_bytes)
         return result.model_dump()
     except HTTPException:
         raise
