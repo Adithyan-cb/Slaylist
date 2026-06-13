@@ -8,7 +8,7 @@ const errorTitle = document.getElementById('error-title');
 const errorMessage = document.getElementById('error-message');
 const errorCloseBtn = document.getElementById('error-close-btn');
 
-let selectedFile = null;
+let selectedFiles = [];
 
 dropZone.addEventListener('click', () => fileInput.click());
 
@@ -25,31 +25,33 @@ dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
     dropZone.classList.remove('bg-primary/10');
     const files = e.dataTransfer.files;
-    if (files.length > 0) handleFile(files[0]);
+    if (files.length > 0) handleFiles(files);
 });
 
 fileInput.addEventListener('change', (e) => {
-    if (e.target.files.length > 0) handleFile(e.target.files[0]);
+    if (e.target.files.length > 0) handleFiles(e.target.files);
 });
 
 errorCloseBtn.addEventListener('click', () => {
     hideError();
 });
 
-function handleFile(file) {
-    selectedFile = file;
+function handleFiles(files) {
+    selectedFiles = Array.from(files);
+    const count = selectedFiles.length;
+    const names = selectedFiles.map((f) => f.name).join(', ');
     dropZone.innerHTML = `
         <span class="material-symbols-outlined text-[48px] text-tertiary animate-bounce">check_circle</span>
-        <p class="font-body-base font-bold text-text-primary">${file.name}</p>
-        <p class="font-label-tiny text-label-tiny text-tertiary uppercase tracking-widest">READY TO CALCULATE</p>
+        <p class="font-body-base font-bold text-text-primary">${count} screenshot${count > 1 ? 's' : ''} selected</p>
+        <p class="font-label-tiny text-label-tiny text-tertiary uppercase tracking-widest">${names}</p>
     `;
     dropZone.style.backgroundImage = 'none';
     dropZone.style.border = '3px solid #c8cc6a';
 }
 
 calculateBtn.addEventListener('click', async () => {
-    if (!selectedFile) {
-        showError('Upload a playlist screenshot first.');
+    if (selectedFiles.length === 0) {
+        showError('Upload at least one playlist screenshot first.');
         return;
     }
 
@@ -57,7 +59,9 @@ calculateBtn.addEventListener('click', async () => {
     loadingSection.classList.remove('hidden');
 
     const formData = new FormData();
-    formData.append('file', selectedFile);
+    for (const file of selectedFiles) {
+        formData.append('files', file);
+    }
 
     try {
         const res = await fetch('/api/analyze', { method: 'POST', body: formData });
