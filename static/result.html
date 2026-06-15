@@ -4,7 +4,7 @@
     <head>
         <meta charset="utf-8" />
         <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-        <title>SLAYLIST - Sonic Aura Results</title>
+        <title>SLAYLIST - Aura score</title>
         <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
         <link
             href="https://fonts.googleapis.com/css2?family=Anton&amp;family=Inter:wght@400;500;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap"
@@ -169,6 +169,108 @@
                 background: #724e91;
                 border-radius: 10px;
             }
+            .story-card {
+                position: fixed;
+                top: 0;
+                left: 0;
+                z-index: -9999;
+                opacity: 0;
+                pointer-events: none;
+                width: 360px;
+                height: 640px;
+                background: #1a1025;
+            }
+            .story-card-inner {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                height: 100%;
+                padding: 40px 28px 28px;
+                position: relative;
+            }
+            .story-card-inner::before {
+                content: "";
+                position: absolute;
+                top: 16px;
+                left: 16px;
+                right: 16px;
+                bottom: 16px;
+                border: 4px solid #724e91;
+                box-shadow:
+                    0 0 30px rgba(114, 78, 145, 0.3),
+                    inset 0 0 30px rgba(114, 78, 145, 0.15);
+                pointer-events: none;
+            }
+            .story-header {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 12px;
+                letter-spacing: 4px;
+                color: #8a7a9e;
+                text-transform: uppercase;
+                margin-bottom: 20px;
+            }
+            .story-badge {
+                background: #0f0a14;
+                border: 3px solid #724e91;
+                box-shadow: 0 0 20px rgba(114, 78, 145, 0.8);
+                border-radius: 12px;
+                padding: 32px 40px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+                width: 260px;
+            }
+            .story-score {
+                font-family: "Anton", sans-serif;
+                font-size: 96px;
+                line-height: 1;
+                color: #dfb7ff;
+                letter-spacing: 0.02em;
+                text-shadow: 0 0 30px rgba(114, 78, 145, 0.5);
+            }
+            .story-max-score {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 24px;
+                font-weight: 700;
+                color: #8a7a9e;
+                margin-bottom: 12px;
+                margin-top: 4px;
+            }
+            .story-divider {
+                width: 48px;
+                border: none;
+                border-top: 1px solid #724e91;
+                margin: 8px 0 12px;
+            }
+            .story-tier {
+                font-family: "Anton", sans-serif;
+                font-size: 20px;
+                letter-spacing: 4px;
+                color: #dfb7ff;
+                text-transform: uppercase;
+                text-align: center;
+            }
+            .story-roast {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 13px;
+                line-height: 1.5;
+                color: #cdc3d0;
+                text-align: center;
+                max-width: 260px;
+                margin-top: 24px;
+                flex: 1;
+                display: flex;
+                align-items: center;
+            }
+            .story-watermark {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 11px;
+                letter-spacing: 2px;
+                color: rgba(223, 183, 255, 0.2);
+                text-transform: uppercase;
+                margin-top: 16px;
+            }
         </style>
     </head>
     <body class="font-body-base overflow-x-hidden">
@@ -259,7 +361,7 @@
                 <div class="flex flex-col w-full gap-sm">
                     <button
                         class="w-full bg-primary py-md rounded-xl text-on-primary-fixed font-bold flex items-center justify-center gap-2 glow-primary active:scale-95 transition-transform"
-                        onclick="copyLink()"
+                        id="download-btn"
                     >
                         <span
                             class="material-symbols-outlined"
@@ -278,22 +380,6 @@
             </section>
         </main>
         <script>
-            function copyLink() {
-                const originalBtn = event.currentTarget;
-                const originalContent = originalBtn.innerHTML;
-
-                originalBtn.innerHTML =
-                    '<span class="material-symbols-outlined">check</span> SHARED!';
-                originalBtn.classList.remove("bg-primary");
-                originalBtn.classList.add("bg-tertiary");
-
-                setTimeout(() => {
-                    originalBtn.innerHTML = originalContent;
-                    originalBtn.classList.add("bg-primary");
-                    originalBtn.classList.remove("bg-tertiary");
-                }, 2000);
-            }
-
             const badge = document.querySelector("#badge-card");
             if (badge) {
                 let angle = 0;
@@ -306,6 +392,22 @@
                 animate();
             }
         </script>
+        <!-- Instagram Story Card (hidden, used for PNG download) -->
+        <div class="story-card" id="story-card">
+            <div class="story-card-inner">
+                <div class="story-header">Slaylist</div>
+                <div class="story-badge">
+                    <div class="story-score" id="story-score">—</div>
+                    <div class="story-max-score" id="story-max-score">
+                        / 100
+                    </div>
+                    <hr class="story-divider" />
+                    <div class="story-tier" id="story-tier">—</div>
+                </div>
+                <div class="story-roast" id="story-roast"></div>
+            </div>
+        </div>
+
         <footer
             class="w-full py-lg px-md border-t border-primary-container/20 bg-surface-container-lowest flex flex-col items-center gap-sm text-center"
         >
@@ -322,6 +424,7 @@
             </a>
         </footer>
 
+        <script src="https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.js"></script>
         <script src="/js/result.js" defer></script>
     </body>
 </html>
