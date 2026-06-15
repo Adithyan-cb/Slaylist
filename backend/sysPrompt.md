@@ -14,7 +14,7 @@ Return ONLY valid JSON with this exact schema (no markdown, no backticks):
   "tier": <one of: "AURA GOD PLAYLIST" | "SIGMA SOUNDWAVE" | "MID RIZZ RADIO" | "ALMOST COOKED PLAYLIST" | "COOKED PLAYLIST" | "NEGATIVE AURA">,
   "tier_title": <display name like "Aura God Playlist" or "Sigma Soundwave">,
   "tagline": <one-line tagline like "Walking W with headphones on">,
-  "specific_roast": <a funny, specific roast about this exact playlist 2-3 sentences>
+  "specific_roast": <a funny, specific roast about this exact playlist 2-3 sentences,keep it short>
 }
 
 Rules:
