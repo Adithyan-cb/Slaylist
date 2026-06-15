@@ -10,14 +10,17 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
+from langchain.globals import set_llm_cache
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
+from sqlalchemy import create_engine
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.staticfiles import StaticFiles
 
+from backend.cache import TTLSQLAlchemyCache
 from backend.models import AuraResponse
 
 load_dotenv()
@@ -25,9 +28,6 @@ load_dotenv()
 CACHE_DIR = Path(__file__).resolve().parent / ".cache"
 CACHE_DIR.mkdir(exist_ok=True)
 
-from sqlalchemy import create_engine
-from langchain_core.globals import set_llm_cache
-from backend.cache import TTLSQLAlchemyCache
 
 CACHE_TTL = int(os.getenv("CACHE_TTL_SECONDS", "86400"))
 _cache_engine = create_engine(f"sqlite:///{CACHE_DIR / 'llm_cache.db'}")
@@ -84,7 +84,9 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     logger.exception("Unhandled exception")
     return JSONResponse(
         status_code=500,
-        content={"detail": "Slaylist is experiencing technical difficulties. Try again."},
+        content={
+            "detail": "Slaylist is experiencing technical difficulties. Try again."
+        },
     )
 
 
@@ -252,7 +254,9 @@ async def analyze(request: Request, files: List[UploadFile] = File(...)):
 
     for file in files:
         if not file.filename:
-            raise HTTPException(status_code=400, detail="Uploaded file has no filename.")
+            raise HTTPException(
+                status_code=400, detail="Uploaded file has no filename."
+            )
 
         safe_name = _sanitize_filename(file.filename)
 
@@ -262,9 +266,7 @@ async def analyze(request: Request, files: List[UploadFile] = File(...)):
         data = await file.read()
 
         if len(data) == 0:
-            raise HTTPException(
-                status_code=400, detail=f"File '{safe_name}' is empty."
-            )
+            raise HTTPException(status_code=400, detail=f"File '{safe_name}' is empty.")
 
         total_size += len(data)
         if total_size > MAX_UPLOAD_SIZE:
