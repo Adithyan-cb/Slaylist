@@ -7,10 +7,15 @@ from pathlib import Path
 from typing import List
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import JSONResponse
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.staticfiles import StaticFiles
 
 from backend.models import AuraResponse
@@ -20,19 +25,33 @@ load_dotenv()
 CACHE_DIR = Path(__file__).resolve().parent / ".cache"
 CACHE_DIR.mkdir(exist_ok=True)
 
+from sqlalchemy import create_engine
 from langchain.globals import set_llm_cache
-from langchain_community.cache import SQLiteCache
+from backend.cache import TTLSQLAlchemyCache
 
-set_llm_cache(SQLiteCache(database_path=str(CACHE_DIR / "llm_cache.db")))
+CACHE_TTL = int(os.getenv("CACHE_TTL_SECONDS", "86400"))
+_cache_engine = create_engine(f"sqlite:///{CACHE_DIR / 'llm_cache.db'}")
 
-app = FastAPI(title="Slaylist API")
+set_llm_cache(TTLSQLAlchemyCache(engine=_cache_engine, ttl_seconds=CACHE_TTL))
 
 logging.basicConfig(
-    level=logging.ERROR, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 logger = logging.getLogger("slaylist")
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+
+LLM_MODEL = os.getenv("LLM_MODEL", "nvidia/nemotron-nano-12b-v2-vl:free")
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://openrouter.ai/api/v1")
+LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.7"))
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024
+
+app = FastAPI(title="Slaylist API")
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(429, _rate_limit_exceeded_handler)
 
 
 class NoCacheStaticFiles(StaticFiles):
@@ -46,11 +65,38 @@ class NoCacheStaticFiles(StaticFiles):
         return response
 
 
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    if isinstance(exc, HTTPException):
+        return await http_exception_handler(request, exc)
+    logger.exception("Unhandled exception")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Slaylist is experiencing technical difficulties. Try again."},
+    )
+
+
 with open("backend/sysPrompt.md") as f:
     PROMPT = f.read()
 
 with open("backend/verifyPrompt.md") as f:
     VERIFY_PROMPT = f.read()
+
+
+def _sanitize_filename(filename: str) -> str:
+    return re.sub(r'[\\/:"*?<>|]', "_", filename)
 
 
 def _build_llm() -> ChatOpenAI:
@@ -61,10 +107,10 @@ def _build_llm() -> ChatOpenAI:
             detail="AI service not configured. Set OPENROUTER_API_KEY in .env",
         )
     return ChatOpenAI(
-        model="nvidia/nemotron-nano-12b-v2-vl:free",
+        model=LLM_MODEL,
         api_key=SecretStr(key),
-        base_url="https://openrouter.ai/api/v1",
-        temperature=0.7,
+        base_url=LLM_BASE_URL,
+        temperature=LLM_TEMPERATURE,
     )
 
 
@@ -184,21 +230,31 @@ async def _call_ai(images_bytes: list[bytes]) -> AuraResponse:
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "service": "slaylist-api"}
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    ai_configured = bool(api_key) and api_key != "your_key_here"
+    cache_exists = (CACHE_DIR / "llm_cache.db").exists()
+    return {
+        "status": "ok",
+        "service": "slaylist-api",
+        "ai_configured": ai_configured,
+        "cache_active": cache_exists,
+    }
 
 
 @app.post("/api/analyze")
-async def analyze(files: List[UploadFile] = File(...)):
+@limiter.limit("15/minute")
+async def analyze(request: Request, files: List[UploadFile] = File(...)):
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded.")
 
     images_bytes: list[bytes] = []
     total_size = 0
-    MAX_TOTAL = 50 * 1024 * 1024
 
     for file in files:
         if not file.filename:
             raise HTTPException(status_code=400, detail="Uploaded file has no filename.")
+
+        safe_name = _sanitize_filename(file.filename)
 
         if file.content_type and not file.content_type.startswith("image/"):
             raise HTTPException(status_code=422, detail="All files must be images.")
@@ -207,11 +263,11 @@ async def analyze(files: List[UploadFile] = File(...)):
 
         if len(data) == 0:
             raise HTTPException(
-                status_code=400, detail=f"File '{file.filename}' is empty."
+                status_code=400, detail=f"File '{safe_name}' is empty."
             )
 
         total_size += len(data)
-        if total_size > MAX_TOTAL:
+        if total_size > MAX_UPLOAD_SIZE:
             raise HTTPException(
                 status_code=413,
                 detail="Total upload size exceeds 50MB limit.",
