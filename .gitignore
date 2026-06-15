@@ -6,4 +6,5 @@ slaylist-venv/
 *.egg-info/
 dist/
 build/
-git-token.txt
+backend/.cache/
+docs
