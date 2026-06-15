@@ -26,7 +26,7 @@ CACHE_DIR = Path(__file__).resolve().parent / ".cache"
 CACHE_DIR.mkdir(exist_ok=True)
 
 from sqlalchemy import create_engine
-from langchain.globals import set_llm_cache
+from langchain_core.globals import set_llm_cache
 from backend.cache import TTLSQLAlchemyCache
 
 CACHE_TTL = int(os.getenv("CACHE_TTL_SECONDS", "86400"))
